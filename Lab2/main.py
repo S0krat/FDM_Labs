@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
 LEFT = 0
 RIGHT = 1
@@ -23,11 +24,11 @@ def gamma_0(t):  # left boundary condition
 
 
 def gamma_1(t):  # right boundary condition
-    return np.sin(np.pi * (t + 1)) * np.exp(-t) + 1  # exact_func(RIGHT, t)
+    return np.sin(np.pi * (t + 1)) * np.exp(-t) + 1
 
 
 def phi(x):  # lower boundary condition
-    return (np.sin(np.pi * x) + 1) * x  # exact_func(x, 0)
+    return (np.sin(np.pi * x) + 1) * x
 
 
 def tdma_solver(a, b, c, d):
@@ -63,11 +64,14 @@ def create_sol(ts, xs):
     return sol
 
 
-def explicit_scheme_error(m, delta):
+def explicit_scheme_error(m, delta, n=-1):
     h = (RIGHT - LEFT) / (m - 1)
-    tau = h * h + delta
-    n = int(np.ceil(T / tau))
-    tau = T / (n - 1)
+    if n == -1:
+        tau = h * h + delta
+        n = int(np.ceil(T / tau))
+        tau = T / (n - 1)
+    else:
+        tau = T / (n - 1)
     xs = np.linspace(LEFT, RIGHT, m)
     ts = np.linspace(0, T, n)
 
@@ -114,8 +118,10 @@ def explicit_scheme_plot_errors():
     ers = []
     for k in range(8):
         n_num = int(5 * 1.5 ** k)
+        print(k, end=' : ')
+        print(n_num)
         er = explicit_scheme_error(n_num, 0)
-        nodes.append(n_num)
+        nodes.append(RIGHT / n_num)
         ers.append(er)
 
     plt.grid()
@@ -124,21 +130,26 @@ def explicit_scheme_plot_errors():
     plt.plot(nodes, ers)
     plt.xscale("log")
     plt.yscale("log")
+    plt.xlabel("h")
+    plt.ylabel("error")
     plt.show()
 
 
 def explicit_scheme_errors_on_tau():
     errors = []
     d_taus = []
-    for i in range(1, 40):
-        # h = np.sqrt(np.sqrt(2))
-        d_tau = 1e-4 * (i / 100)
+    for i in range(1, 20):
+        d_tau = 1e-4 * (2 + i / 50)
         d_taus.append(d_tau)
-        error = explicit_scheme_error(20, d_tau)
+        error = explicit_scheme_error(30, d_tau)
         errors.append(error)
+        print(i)
 
+    plt.grid()
     plt.plot(d_taus, errors)
     plt.yscale("log")
+    plt.xlabel("$d\\tau$")
+    plt.ylabel("error")
     plt.show()
 
 
@@ -196,7 +207,7 @@ def implicit_scheme_error_on_tau():
     ms = [11, 25, 56]
     errors = [0.004114340922257379, 0.000704891637241193, 0.00013398881184402758]
     colors = ["red", "green", "blue"]
-    plt.grid()
+    _, ax = plt.subplots(1, 3)
     for j in range(len(ms)):
         m = ms[j]
         h = (RIGHT - LEFT) / (m - 1)
@@ -210,12 +221,15 @@ def implicit_scheme_error_on_tau():
             n = int(T / tau) + 1
             print(n)
             ers.append(implicit_scheme_error(m, n))
-        plt.axhline(y=errors[j], color=colors[j], linestyle="--")
-        plt.plot(taus, ers, color=colors[j], label=f"h={h:.3f}")
+        ax[j].grid()
+        ax[j].axhline(y=errors[j], color=colors[j], linestyle="--")
+        ax[j].plot(taus, ers, color=colors[j])
+        ax[j].set_title(f"h={h:.3f}")
+        ax[j].set_xscale("log")
+        # ax[j].set_yscale("log")
+        ax[j].set_xlabel("$\\tau$")
 
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.legend()
+    ax[0].set_ylabel("error")
     plt.show()
 
 
@@ -276,7 +290,7 @@ def crank_nicolson_error_on_tau():
     ms = [11, 25, 56]
     errors = [0.004114340922257379, 0.000704891637241193, 0.00013398881184402758]
     colors = ["red", "green", "blue"]
-    plt.grid()
+    _, ax = plt.subplots(1, 3)
     for j in range(len(ms)):
         m = ms[j]
         h = (RIGHT - LEFT) / (m - 1)
@@ -284,34 +298,32 @@ def crank_nicolson_error_on_tau():
         taus = []
         ers = []
 
-        for i in range(10):
+        for i in range(7 + 3 * j):
             tau = tau_0 * np.sqrt(2) ** i
             taus.append(tau)
             n = int(T / tau) + 1
             print(n)
             ers.append(crank_nicolson_error(m, n))
-        plt.axhline(y=errors[j], color=colors[j], linestyle="--")
-        plt.plot(taus, ers, color=colors[j], label=f"h={h:.3f}")
+        ax[j].grid()
+        ax[j].axhline(y=errors[j], color=colors[j], linestyle="--")
+        ax[j].plot(taus, ers, color=colors[j])
+        ax[j].set_title(f"h={h:.3f}")
+        ax[j].set_xscale("log")
+        ax[j].set_xlabel("$\\tau$")
 
-    plt.xscale("log")
-    plt.yscale("log")
-    plt.legend()
+    ax[0].set_ylabel("error")
     plt.show()
 
 
 def order_of_schemes_on_h():
-    e_errors = []
     i_errors = []
     cn_errors = []
     hs = []
-    for i in range(3, 11):
-        m = 2 ** i
+    for i in range(1, 15):
+        m = 10 + int(np.sqrt(2) ** i)
         print(m, end=' : ')
-        # n = int(T * ((m - 1) / (RIGHT - LEFT)) ** 2) + 1
-        n = 1000
+        n = 5000
         hs.append((RIGHT - LEFT) / (m - 1))
-        # e_errors.append(explicit_scheme_error(m, 0))
-        # print("Explicit ", end='')
         i_errors.append(implicit_scheme_error(m, n))
         print("Implicit ", end='')
         cn_errors.append(crank_nicolson_error(m, n))
@@ -320,7 +332,6 @@ def order_of_schemes_on_h():
     plt.grid()
     plt.xscale("log")
     plt.yscale("log")
-    # plt.plot(hs, e_errors, label="explicit")
     plt.plot(hs, i_errors, label="implicit")
     plt.plot(hs, cn_errors, label="crank nicolson")
     plt.legend()
@@ -332,13 +343,12 @@ def order_of_schemes_on_h():
 def order_of_schemes_on_tau():
     i_errors = []
     cn_errors = []
-    taus = []
-    for i in range(3, 11):
+    hs = []
+    for i in range(3, 8):
         n = 2 ** i
         print(n, end=' : ')
-        # n = int(T * ((m - 1) / (RIGHT - LEFT)) ** 2) + 1
         m = 1000
-        taus.append(T / (n - 1))
+        hs.append(T / (n - 1))
         i_errors.append(implicit_scheme_error(m, n))
         print("Implicit ", end='')
         cn_errors.append(crank_nicolson_error(m, n))
@@ -347,15 +357,51 @@ def order_of_schemes_on_tau():
     plt.grid()
     plt.xscale("log")
     plt.yscale("log")
-    # plt.plot(hs, e_errors, label="explicit")
-    plt.plot(taus, i_errors, label="implicit")
-    plt.plot(taus, cn_errors, label="crank nicolson")
+    plt.plot(hs, i_errors, label="implicit")
+    plt.plot(hs, cn_errors, label="crank nicolson")
     plt.legend()
-    plt.xlabel("h")
+    plt.xlabel("$\\tau$")
     plt.ylabel("error")
     plt.show()
 
 
+def time_search():
+    ex_errors = []
+    ex_times = []
+    im_errors = []
+    im_times = []
+    cn_errors = []
+    cn_times = []
+    h_0 = 0.2
+    for i in range(14):
+        h = h_0 / (np.sqrt(2) ** i)
+        m = int((RIGHT - LEFT) / h) + 1
+        n = int(T / (h * h)) + 1
+        print(i)
+        if i < 9:
+            start = time.time()
+            ex_errors.append(explicit_scheme_error(m, 0))
+            ex_times.append((time.time() - start) / 3)
+            start = time.time()
+            im_errors.append(implicit_scheme_error(m, n))
+            im_times.append((time.time() - start) / 3)
+        start = time.time()
+        cn_errors.append(crank_nicolson_error(m, T*m))
+        cn_times.append((time.time() - start) / 3)
+
+    plt.grid()
+    plt.plot(ex_errors, ex_times, label="Explicit")
+    plt.plot(im_errors, im_times, label="Implicit")
+    plt.plot(cn_errors, cn_times, label="Crank-Nicolson")
+    plt.legend()
+    plt.xscale("log")
+    plt.yscale("log")
+    plt.xlabel("error")
+    plt.ylabel("time")
+    plt.show()
+
+
+explicit_scheme_plot_sols(30)
 # x = np.linspace(LEFT, RIGHT, 100)
 # t = np.linspace(0, T, 300)
 # t, x = np.meshgrid(t, x)
